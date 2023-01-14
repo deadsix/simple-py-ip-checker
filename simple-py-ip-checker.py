@@ -113,7 +113,10 @@ def main():
         if curr_ip_addr_date_time[0] in last_ip_addr_with_date_time:
             print(f'''Your IP address has not changed since I checked {find_time_delta_from_now(last_ip_addr_with_date_time[1])}''')
             store_ip_addr(curr_ip_addr_date_time[0], curr_ip_addr_date_time[1])
-
+        else:
+            print(f'''Your IP address has changed! Your new address is: {curr_ip_addr_date_time[0]}''')
+            store_ip_addr(curr_ip_addr_date_time[0], curr_ip_addr_date_time[1])
+            print(f'''Your new IP address is stored and I will be checking against it from now on!''')
     else:
         print(f'''I don't have an IP address stored so creating a database now''')
         create_db()
