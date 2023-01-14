@@ -1,7 +1,15 @@
 # This script checks your public IP and notifies you if it changes
 
-import urllib.request
+#########################################
+#
+# IMPORTS
+#
+#########################################
 
+import urllib.request
+import sqlite3
+import os
+from datetime import datetime, date, time, timezone
 
 #########################################
 #
@@ -9,21 +17,47 @@ import urllib.request
 #
 #########################################
 
+# check_db_exists function
+# Checks if the database for storing IP addresses exists
+def check_db_exists():
+    local_files_dirs = os.listdir('.')
+    if 'ip_addrs.db' in local_files_dirs:
+        return True
+    else:
+        return False
+
+
+# create_db function
+# Creates a sqlite3 database for storing IP the addresses
+def create_db():
+    # Create DB
+    db_con = sqlite3.connect("ip_addrs.db")
+    cur = db_con.cursor()
+    cur.execute('''CREATE TABLE Stored_IP_Addresses 
+                (ip_addr, add_ip_addr_date_time)''')
+    db_con.commit()
+
+    # Check if DB and Table exist and try again if db and table not created
+    res = cur.execute('''SELECT name 
+                        FROM sqlite_master 
+                        WHERE name='Stored_IP_Addresses' ''')
+    if res.fetchone() is None:
+        print("Trouble creating the database, trying again!")
+        create_db()
+
+    db_con.close()
+    return True
+
 # read_ip_address function
 # Attempts to read from text file the last saved public IP address
 def read_ip_address():
-    try:
-        with open('my_ip', 'r', encoding="utf-8") as ip_text_file:
-            last_ip_addr = ip_text_file.read()
-        return last_ip_addr
-    except FileNotFoundError:
-        print('Saved IP Address file not found, storing current IP address')
-        return False
+    db_con = sqlite3.connect("ip_addrs.db")
+    cur = db_con.cursor()
 
 
 # http_request_public_ip function
 # This makes a request to a remote web server that will return your public IP address
-# The response is a pointer for a memory location for an object that type is byte so it must be decoded
+# The response is a pointer for a memory location for an object that type is byte, so it must be decoded
 # Function will decode response into a string and remove trailing new line characters
 def http_request_public_ip():
     http_request = urllib.request.urlopen('http://checkip.amazonaws.com/')
@@ -31,11 +65,20 @@ def http_request_public_ip():
     return http_request.read().decode().removesuffix('\n')
 
 
+# get_current_date_time function
+# gets the current date and time
+def get_current_date_time():
+    current_date_time = datetime.now(timezone.utc).strftime('%G-%m-%d %H:%M:%S.%f%z')
+    return current_date_time
+
 # store_ip_address function
 # Writes the updated ip address to a text file called my ip
-def store_ip_addr(new_ip_addr):
-    with open('my_ip', 'w', encoding="utf-8") as ip_text_file:
-        ip_text_file.write(new_ip_addr)
+def store_ip_addr(new_ip_addr, date_time_of_ip_addr_fetch):
+    db_con = sqlite3.connect("ip_addrs.db")
+    cur = db_con.cursor()
+    cur.execute("INSERT INTO Stored_IP_Addresses VALUES(?, ?)", (new_ip_addr, date_time_of_ip_addr_fetch))
+    db_con.commit()
+    res = cur.execute("SELECT * FROM Stored_IP_Addresses")
 
 
 #########################################
@@ -44,21 +87,23 @@ def store_ip_addr(new_ip_addr):
 #
 #########################################
 def main():
-    saved_ip_addr = read_ip_address()
-
-    if saved_ip_addr == False:
+    if check_db_exists() is True:
         first_ip_addr = http_request_public_ip()
         store_ip_addr(first_ip_addr)
-        print(f'''I didn't have an IP address stored so I saved your current IP Address of {first_ip_addr}''')
-    else:
-        current_ip_addr = http_request_public_ip()
 
-        if saved_ip_addr == current_ip_addr:
-            print(f'Your IP Address of {saved_ip_addr} has not changed since I last checked')
-        else:
-            print(f'''Your IP Address changed! I'm saving your new IP Address: {current_ip_addr}''')
-            store_ip_addr(current_ip_addr)
-            print('Your new IP Address is saved!')
+    else:
+        print(f'''I don't have an IP address stored so creating a database now''')
+        create_db()
+
+        print(f'''Fetching your IP!''')
+        first_ip_addr = http_request_public_ip()
+
+        date_time_ip_addr_fetch = get_current_date_time()
+
+        print(f'''Storing your first fetched IP address in the database!''')
+        store_ip_addr(first_ip_addr, date_time_ip_addr_fetch)
+
+        print(f'''Your current IP Address of {first_ip_addr} is stored!''')
 
 
 main()
