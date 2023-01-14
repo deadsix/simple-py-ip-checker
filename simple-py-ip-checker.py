@@ -9,13 +9,15 @@
 import urllib.request
 import sqlite3
 import os
-from datetime import datetime, date, time, timezone
+import math
+from datetime import datetime, timezone
 
 #########################################
 #
 # FUNCTIONS
 #
 #########################################
+
 
 # check_db_exists function
 # Checks if the database for storing IP addresses exists
@@ -48,11 +50,18 @@ def create_db():
     db_con.close()
     return True
 
+
 # read_ip_address function
 # Attempts to read from text file the last saved public IP address
-def read_ip_address():
+def read_last_ip_address_from_db():
     db_con = sqlite3.connect("ip_addrs.db")
     cur = db_con.cursor()
+    res = cur.execute('''SELECT ip_addr, add_ip_addr_date_time
+                        FROM Stored_IP_Addresses
+                        ORDER BY add_ip_addr_date_time DESC
+                        LIMIT 1
+                    ''')
+    return res.fetchone()
 
 
 # http_request_public_ip function
@@ -68,17 +77,27 @@ def http_request_public_ip():
 # get_current_date_time function
 # gets the current date and time
 def get_current_date_time():
-    current_date_time = datetime.now(timezone.utc).strftime('%G-%m-%d %H:%M:%S.%f%z')
+    current_date_time = datetime.now(timezone.utc)
     return current_date_time
+
+
+# find_time_delta_from_now function
+# Function to find how long ago we last checked the public IP address to inform the user
+def find_time_delta_from_now(last_date_time_ip_addr_changed):
+    time_delta = datetime.now(timezone.utc) - datetime.strptime(last_date_time_ip_addr_changed, '%Y-%m-%d %H:%M:%S.%f%z')
+    calc_time_delta_hrs = math.floor(time_delta.seconds / 3600)
+    calc_time_delta_mins = math.floor((time_delta.seconds % 3600) / 60)
+    calc_time_delta_secs = math.ceil(((time_delta.seconds % 3600) % 60))
+    return f'''{time_delta.days} days {calc_time_delta_hrs} hours {calc_time_delta_mins} minutes and {calc_time_delta_secs} seconds ago'''
+
 
 # store_ip_address function
 # Writes the updated ip address to a text file called my ip
-def store_ip_addr(new_ip_addr, date_time_of_ip_addr_fetch):
+def store_ip_addr(ip_addr, date_time_of_ip_addr_fetch):
     db_con = sqlite3.connect("ip_addrs.db")
     cur = db_con.cursor()
-    cur.execute("INSERT INTO Stored_IP_Addresses VALUES(?, ?)", (new_ip_addr, date_time_of_ip_addr_fetch))
+    cur.execute("INSERT INTO Stored_IP_Addresses VALUES(?, ?)", (ip_addr, date_time_of_ip_addr_fetch))
     db_con.commit()
-    res = cur.execute("SELECT * FROM Stored_IP_Addresses")
 
 
 #########################################
@@ -88,8 +107,12 @@ def store_ip_addr(new_ip_addr, date_time_of_ip_addr_fetch):
 #########################################
 def main():
     if check_db_exists() is True:
-        first_ip_addr = http_request_public_ip()
-        store_ip_addr(first_ip_addr)
+        last_ip_addr_with_date_time = read_last_ip_address_from_db()
+        curr_ip_addr_date_time = [http_request_public_ip(), get_current_date_time()]
+
+        if curr_ip_addr_date_time[0] in last_ip_addr_with_date_time:
+            print(f'''Your IP address has not changed since I checked {find_time_delta_from_now(last_ip_addr_with_date_time[1])}''')
+            store_ip_addr(curr_ip_addr_date_time[0], curr_ip_addr_date_time[1])
 
     else:
         print(f'''I don't have an IP address stored so creating a database now''')
