@@ -98,11 +98,13 @@ def get_current_date_time():
 # find_time_delta_from_now function
 # Function to find how long ago we last checked the public IP address to inform the user
 def find_time_delta_from_now(last_date_time_ip_addr_changed):
-    time_delta = datetime.now(timezone.utc) - datetime.strptime(last_date_time_ip_addr_changed, '%Y-%m-%d %H:%M:%S.%f%z')
+    time_delta = datetime.now(timezone.utc) - datetime.strptime(last_date_time_ip_addr_changed,
+                                                                '%Y-%m-%d %H:%M:%S.%f%z')
     calc_time_delta_hrs = math.floor(time_delta.seconds / 3600)
     calc_time_delta_mins = math.floor((time_delta.seconds % 3600) / 60)
     calc_time_delta_secs = math.ceil(((time_delta.seconds % 3600) % 60))
-    return f'''{time_delta.days} days {calc_time_delta_hrs} hours {calc_time_delta_mins} minutes and {calc_time_delta_secs} seconds ago'''
+    return f'''{time_delta.days} days {calc_time_delta_hrs} hours {calc_time_delta_mins} minutes'''\
+        f''' and {calc_time_delta_secs} seconds ago'''
 
 
 # store_ip_address function
@@ -134,7 +136,7 @@ def send_discord_notification(webhook_url, discord_id, message):
         "content": message
     }
 
-    headers ={
+    headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
         "User-Agent": "Mozilla/5.0 (X11; U; Linux i686) Gecko/20071127 Firefox/2.0.0.11"
