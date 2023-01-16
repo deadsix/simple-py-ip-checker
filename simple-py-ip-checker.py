@@ -19,14 +19,6 @@ from datetime import datetime, timezone
 
 #########################################
 #
-# INITIALIZATION
-#
-#########################################
-logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', datefmt='%x %X', level=logging.INFO)
-
-
-#########################################
-#
 # FUNCTIONS
 #
 #########################################
@@ -209,75 +201,96 @@ def send_discord_notification(webhook_url, discord_id, message):
 
 #########################################
 #
+# INITIALIZATION
+#
+#########################################
+def init():
+    logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', datefmt='%x %X',
+                        level=logging.INFO)
+    logging.info('simple-py-ip-checker.py starting and now initializing')
+
+    env_vars = read_env_vars()
+    default_log_levels = {'CRITICAL': 50, 'ERROR': 40, 'WARNING': 30, 'INFO': 20, 'DEBUG': 10, 'NOTSET': 0}
+
+    if env_vars['log_level'] in default_log_levels:
+        logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', datefmt='%x %X',
+                            level=default_log_levels[env_vars['log_level']])
+    else:
+        logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', datefmt='%x %X',
+                            level=logging.WARN)
+
+    return env_vars
+
+
+#########################################
+#
 # MAIN
 #
 #########################################
 def main():
-    logging.info('simple-py-ip-checker.py starting')
-    env_vars_main = read_env_vars()
-
-    if check_db_exists(env_vars_main['db_name']) is True:
+    init_vars = init()
+    if check_db_exists(init_vars['db_name']) is True:
         try:
-            last_ip_addr_with_date_time = read_last_ip_address_from_db(env_vars_main['db_name'])
+            last_ip_addr_with_date_time = read_last_ip_address_from_db(init_vars['db_name'])
         except Exception:
             logging.error('Exiting due to error reading from database')
-            exit()
+            exit(1)
         try:
             curr_ip_addr_date_time = [http_request_public_ip(), get_current_date_time()]
         except Exception:
             logging.error('Exiting due to error fetching current public IP address')
-            exit()
+            exit(1)
 
         if curr_ip_addr_date_time[0] in last_ip_addr_with_date_time:
             logging.info(f'''Your IP address has not changed since I checked''' 
                          f''' {find_time_delta_from_now(last_ip_addr_with_date_time[1])}''')
             try:
-                store_ip_addr(curr_ip_addr_date_time[0], curr_ip_addr_date_time[1], env_vars_main['db_name'])
-            except Exception as e:
+                store_ip_addr(curr_ip_addr_date_time[0], curr_ip_addr_date_time[1], init_vars['db_name'])
+            except Exception:
                 logging.error('Exiting due to error writing to database')
-                exit()
+                exit(1)
         else:
             logging.info(f'Your IP address has changed! Your new address is: {curr_ip_addr_date_time[0]}')
-            store_ip_addr(curr_ip_addr_date_time[0], curr_ip_addr_date_time[1], env_vars_main['db_name'])
-            if env_vars_main['discord_notifications_enabled'] is True:
+            store_ip_addr(curr_ip_addr_date_time[0], curr_ip_addr_date_time[1], init_vars['db_name'])
+            if init_vars['discord_notifications_enabled'] is True:
                 message_to_send = 'Your IP Address has changed!'
                 try:
-                    send_discord_notification(env_vars_main['discord_webhook_url'], env_vars_main['discord_id'],
+                    send_discord_notification(os.environ['discord_webhook_url'], init_vars['discord_id'],
                                               message_to_send)
                 except Exception:
                     logging.error('Exiting due to error sending Discord notification')
-                    exit()
+                    exit(1)
 
         logging.info(f'Script successfully executed, exiting...')
-        exit()
+        exit(0)
     else:
         try:
-            logging.info(f'''Database doesn't exist, creating one named {env_vars_main['db_name']}''')
-            create_db(env_vars_main['db_name'])
+            logging.info(f'''Database doesn't exist, creating one named {init_vars['db_name']}''')
+            create_db(init_vars['db_name'])
         except Exception:
             logging.error('Exiting due to error creating Database')
-            exit()
+            exit(1)
         try:
             first_ip_addr = http_request_public_ip()
         except Exception:
             logging.error('Exiting due to error fetching current public IP address')
-            exit()
+            exit(1)
 
         date_time_ip_addr_fetch = get_current_date_time()
 
         try:
-            store_ip_addr(first_ip_addr, date_time_ip_addr_fetch, env_vars_main['db_name'])
-        except Exception as e:
+            store_ip_addr(first_ip_addr, date_time_ip_addr_fetch, init_vars['db_name'])
+        except Exception:
             logging.error('Exiting due to error writing to database')
-            exit()
+            exit(1)
 
-        if env_vars_main['discord_notifications_enabled'] is True:
+        if init_vars['discord_notifications_enabled'] is True:
             message_to_send = 'Your current IP Address is now stored and being tracked for a change'
-            send_discord_notification(env_vars_main['discord_webhook_url'], env_vars_main['discord_id'],
+            send_discord_notification(init_vars['discord_webhook_url'], init_vars['discord_id'],
                                       message_to_send)
 
     logging.info(f'Script successfully executed, exiting...')
-    exit()
+    exit(0)
 
 
 main()
