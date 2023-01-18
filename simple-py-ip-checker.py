@@ -75,7 +75,7 @@ def create_db(db_name):
 
 
 # read_ip_address function
-# Attempts to read from text file the last saved public IP address
+# Attempts to read from the db the last saved public IP address
 def read_last_ip_address_from_db(db_name):
     try:
         logging.info(f'Attempting to connect and query {db_name} for last stored IP')
@@ -120,7 +120,7 @@ def http_request_public_ip():
 
 
 # get_current_date_time function
-# gets the current date and time
+# gets the current date and time and returns that as a datetime object
 def get_current_date_time():
     logging.info('Fetching the current time and date')
     current_date_time = datetime.now(timezone.utc)
@@ -135,13 +135,13 @@ def find_time_delta_from_now(last_date_time_ip_addr_changed):
                                                                 '%Y-%m-%d %H:%M:%S.%f%z')
     calc_time_delta_hrs = math.floor(time_delta.seconds / 3600)
     calc_time_delta_mins = math.floor((time_delta.seconds % 3600) / 60)
-    calc_time_delta_secs = math.ceil(((time_delta.seconds % 3600) % 60))
+    calc_time_delta_secs = math.ceil((((time_delta.seconds % 3600) % 60)+(time_delta.microseconds / 1000000)))
     return f'''{time_delta.days} day(s) {calc_time_delta_hrs} hour(s) {calc_time_delta_mins} minute(s)'''\
         f''' and {calc_time_delta_secs} second(s) ago'''
 
 
 # store_ip_address function
-# Writes the updated ip address to a text file called my ip
+# Writes the updated ip address to the specified db
 def store_ip_addr(ip_addr, date_time_of_ip_addr_fetch, db_name):
     logging.info(f'Attempting to store the current public IP address ({ip_addr}) '
                  f'and date and time of fetch ({date_time_of_ip_addr_fetch}) in the database')
