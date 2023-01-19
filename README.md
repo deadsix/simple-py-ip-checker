@@ -29,7 +29,7 @@ The script will automatically default log level `WARN`
 - `discord_webhook_url` - the webhook url provided by Discord. This value must be provided if Discord notifications are 
 enabled. Learn more about Discord webhooks via Discord's 
 [Intro to Webhooks](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks).
-- `discord_user_id` -  the discord if of the user you'd like mentioned when the notification is sent. Learn how to find a
+- `discord_user_id` -  the Discord user id of the user you'd like mentioned when the notification is sent. Learn how to find a
 Discord User ID  via Discord's [support guide](https://support.discord.com/hc/en-us/articles/206346498-Where-can-I-find-my-User-Server-Message-ID-).
 
 ### Planned Features
