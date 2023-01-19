@@ -27,8 +27,21 @@ from datetime import datetime, timezone
 # read_env_vars function
 # Read environment variables for more advanced features such as remote notifications
 def read_env_vars():
-    json_file = open('env.json', 'r')
-    env_vars = json.load(json_file)
+    try:
+        with open('env.json', mode='r', encoding='utf-8') as json_file:
+            env_vars = json.load(json_file)
+    except FileNotFoundError as file_not_found_err:
+        logging.warning('''File 'env.json' was not found creating it now with default values''')
+        logging.debug(file_not_found_err)
+        env_vars = {
+            "db_name": "ip_addrs.db",
+            "log_level": "",
+            "discord_notifications_enabled": False,
+            "discord_webhook_url": "",
+            "discord_id": ""
+        }
+        with open('env.json', mode='w', encoding='utf-8') as json_file:
+            json_file.write(json.dumps(env_vars))
     return env_vars
     # TODO add regex check for '.db' and Discord webhook
 
@@ -180,6 +193,7 @@ def send_discord_notification(webhook_url, discord_id, message):
         "content": message
     }
 
+    # Discord requires a user agent change default urllib user agent is blocked
     headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
@@ -188,6 +202,7 @@ def send_discord_notification(webhook_url, discord_id, message):
 
     data = json.dumps(payload).encode('utf-8')
 
+    # Send Request
     try:
         req = urllib.request.Request(url, data, headers)
         with urllib.request.urlopen(req) as res:
