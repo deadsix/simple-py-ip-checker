@@ -13,7 +13,7 @@ import math
 import json
 import logging
 import time
-import calendar
+from calendar import timegm
 from datetime import datetime, timezone
 
 
@@ -38,7 +38,7 @@ def read_env_vars():
             "log_level": "",
             "discord_notifications_enabled": False,
             "discord_webhook_url": "",
-            "discord_id": ""
+            "discord_user_id": ""
         }
         with open('env.json', mode='w', encoding='utf-8') as json_file:
             json_file.write(json.dumps(env_vars))
@@ -50,7 +50,7 @@ def read_env_vars():
 # Converts a string that represents a UTC time to a local time as type tuple
 def convert_str_time_utc_to_local_time(str_time_utc):
     utc_time = time.strptime(str_time_utc, '%Y-%m-%d %H:%M:%S.%f%z')
-    utc_time = calendar.timegm(utc_time)
+    utc_time = timegm(utc_time)
     local_time = time.localtime(utc_time)
     return local_time
 
@@ -174,7 +174,7 @@ def store_ip_addr(ip_addr, date_time_of_ip_addr_fetch, db_name):
 
 # send_discord_notification function
 # sends a notification using the webhook provided in the environment variables
-def send_discord_notification(webhook_url, discord_id, message):
+def send_discord_notification(webhook_url, user_id, message):
     # Extract webhook id and webhook token from provided url
     webhook_id_and_token = webhook_url.removeprefix('https://discord.com/api/webhooks/')
     webhook_id_and_token = webhook_id_and_token.partition('/')
@@ -186,11 +186,11 @@ def send_discord_notification(webhook_url, discord_id, message):
     url = f'{webhook_url}?wait=true'
 
     payload = {
-        "name": "Py Ip Checker",
+        "name": "Simple Py Ip Checker",
         "type": 1,
         "token": webhook_token,
         "id": webhook_id,
-        "content": message
+        "content": f'{user_id}{message}'
     }
 
     # Discord requires a user agent change default urllib user agent is blocked
@@ -270,7 +270,7 @@ def main():
             if init_vars['discord_notifications_enabled'] is True:
                 message_to_send = 'Your IP Address has changed!'
                 try:
-                    send_discord_notification(os.environ['discord_webhook_url'], init_vars['discord_id'],
+                    send_discord_notification(os.environ['discord_webhook_url'], init_vars['discord_user_id'],
                                               message_to_send)
                 except Exception:
                     logging.error('Exiting due to error sending Discord notification')
@@ -301,7 +301,7 @@ def main():
 
         if init_vars['discord_notifications_enabled'] is True:
             message_to_send = 'Your current IP Address is now stored and being tracked for a change'
-            send_discord_notification(init_vars['discord_webhook_url'], init_vars['discord_id'],
+            send_discord_notification(init_vars['discord_webhook_url'], init_vars['discord_user_id'],
                                       message_to_send)
 
     logging.info(f'Script successfully executed, exiting...')
